@@ -5,6 +5,8 @@ from typing import List             # for type annotation
 import numpy as np                  # for numpy arrays
 from astropy.io import fits         # for opening .fits files
 import astropy.visualization        # for ZScaleInterval (data normalisation)
+from tqdm import tqdm
+import os, json 
 
 
 # Function which loads a single .fits file as an image_sizeximage_sizex1 np.ndarray, given its path
@@ -24,6 +26,22 @@ def load_fits_image(fits_file_path: str, fits_file_normalisation: str = 'ZScale'
 
     return image_data
 
+def read_samples(trainset_path):
+    '''trainset.dat file parsing to get dataset samples'''
+    samples = []
+    with open(trainset_path) as f:
+        # Replace original path with current dir path
+        for json_path in tqdm(f):
+            json_path = json_path.replace('/home/riggi/Data/MLData', os.path.abspath(os.pardir))
+            json_path = os.path.normpath(json_path).strip()
+            with open(json_path, 'r') as label_json:
+                label = json.load(label_json)
+                # replacing relative path with the absolute one
+                label['img'] = label['img'].replace('..', os.sep.join(json_path.split(os.sep)[:-2]))
+                label['img'] = os.path.normpath(label['img'])
+                samples.append(label)
+
+        return samples
 
 # Function which loads a single .fits file as an image_sizeximage_sizex1 np.ndarray, given its path
 def load_fits_four_channel(fits_file_paths: List[str], fits_file_normalisation: str = 'ZScale') -> np.ndarray:

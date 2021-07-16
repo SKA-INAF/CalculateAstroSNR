@@ -1,14 +1,16 @@
-from typing import List         # for type annotation
+from typing import List             # for type annotation
 
-import os                                       # for working with files and directories
-import json                                     # for reading JSON files from disk
-import numpy as np                              # for numpy arrays and other operations
-import astropy.stats                            # for 3-sigma clipping
-from scipy import stats
-import argparse
+import argparse                     # for parsing command line arguments
+import os                           # for working with files and directories
 from pathlib import Path
+from tqdm import tqdm               # for progress bars
+# import json                                     # for reading JSON files from disk
+import numpy as np                  # for numpy arrays and other operations
+import astropy.stats                # for 3-sigma clipping and MAD
 
 from utils.load_fits import load_fits_image, read_samples     # for loading fits images with optional normalisation
+
+
 def get_args_parser():
     parser = argparse.ArgumentParser('SNR Calculation', add_help=False)
 
@@ -20,29 +22,32 @@ def get_args_parser():
 
 def main(args):
     # path of the file which points to the paths of the JSONs of all the images for which the SNR should be calculated
-    image_json_list_path: str = Path(args.json_list_path)
-    data_dir: str = Path(args.data_dir)
+    image_json_list_path = Path(args.json_list_path)
+    data_dir = Path(args.data_dir)
 
-    samples = read_samples(image_json_list_path)
+    samples: List = read_samples(image_json_list_path)
 
     # Look at each JSON file in image_json_path_list
-    for sample in samples:
+    for sample in tqdm(samples, desc='Going through images and their object masks, and calculating MAD'):
+        # check that the image fits file actually exists on disk
         if not os.path.isfile(sample['img']):
             # if not, print a message and skip it
             print('File ' + sample['img'] + ' not found on disk.')
             continue
+        # load the image from disk
         image = load_fits_image(sample['img'], 'none')
-        # Take the containing folder for masks and images (up to sampleX)
-        image_dir = sample['img'].split(os.sep)[:-2]
 
         # generate an aggregate of all the individual object masks
-        combined_mask: np.ndarray = np.zeros((image.shape[0], image.shape[1]))
+        combined_mask: np.ndarray = np.full((image.shape[0], image.shape[1]), fill_value=False, dtype=bool)
         # Load each mask associated with the current image, as specified in the JSON File
         for obj in sample['objs']:
+            # Take the containing folder for masks and images (up to sampleX)
+            image_dir: List[str] = sample['img'].split(os.sep)[:-2]
+
             if os.name == 'nt':
                 # Hack for Windows path
-                image_dir = os.sep.join(image_dir)
-                mask_path = os.path.join(image_dir, 'masks', obj['mask'])
+                image_dir: str = os.sep.join(image_dir)
+                mask_path: str = os.path.join(image_dir, 'masks', obj['mask'])
             else:
                 # Linux paths
                 mask_path = os.path.join(os.path.sep, *image_dir, 'masks', obj['mask'])
@@ -54,47 +59,23 @@ def main(args):
                 continue
 
             # load the mask from disk
-            # TODO!!!! check whether to load images with normalisation or not for SNR
             mask: np.ndarray = load_fits_image(mask_path, 'none')
 
             # convert the masks into boolean (for logical operations)
-            # boolean_mask: np.ndarray = (mask == 1)
-            # Some masks have values different from 1
             boolean_mask: np.ndarray = (mask != 0)
-            boolean_combined_mask: np.ndarray = (combined_mask != 0)
             # Carry out an OR between the current and aggregated mask, to combine them
-            # by storing the output in combined_mask, the output is broadcasted into floats
-            np.bitwise_or(boolean_mask, boolean_combined_mask, out=combined_mask)
+            np.bitwise_or(boolean_mask, combined_mask, out=combined_mask)
 
-        # calculate the image with masked areas zeroed out
-        # TODO might not be needed
-        image_masked = image - (image * combined_mask)
+        masked_image = np.ma.array(image, mask=combined_mask)
 
-        boolean_combined_mask: np.ndarray = (combined_mask != 0)
-        masked_image = np.ma.array(image, mask=boolean_combined_mask)
-        # print(masked_image)
+        # https://docs.astropy.org/en/stable/api/astropy.stats.sigma_clipped_stats.html
+        three_sigma_clip = astropy.stats.sigma_clipped_stats(masked_image, sigma=3)
+        print('3 Sigma Clip (mean, median, standard deviation): ' + str(three_sigma_clip))
 
-        # mean calculation for unmasked pixels
-        # sum: float = 0.0
-        # count: int = 0
-        # boolean_combined_mask: np.ndarray = (combined_mask == 1)
-        # for i, axis_one in enumerate(image):
-        #     for j, axis_two in enumerate(axis_one):
-        #         # if the current element is marked 'True', skip it since it contains an object
-        #         if boolean_combined_mask[i][j]:
-        #             continue
-        #         sum += image[i][j]
-        #         count += 1
-        # print('Average pixel ' + str((sum/count)))
+        # https://docs.astropy.org/en/stable/api/astropy.stats.median_absolute_deviation.html
+        mad: float = astropy.stats.median_absolute_deviation(masked_image)
+        print('MAD: ' + str(mad))
 
-        three_sigma_clip = astropy.stats.sigma_clip(image_masked, sigma=3)
-        # print(three_sigma_clip)
-
-        mad = stats.median_absolute_deviation(masked_image)
-        # print(mad)
-
-        astro_mad: float = astropy.stats.median_absolute_deviation(masked_image)
-        print(astro_mad)
 
 if __name__ == '__main__':
     args = get_args_parser().parse_args()

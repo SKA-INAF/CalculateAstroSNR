@@ -6,23 +6,25 @@ import numpy as np                              # for numpy arrays and other ope
 import astropy.stats                            # for 3-sigma clipping
 from scipy import stats
 import argparse
+from pathlib import Path
 
 from utils.load_fits import load_fits_image, read_samples     # for loading fits images with optional normalisation
 def get_args_parser():
     parser = argparse.ArgumentParser('SNR Calculation', add_help=False)
 
-    parser.add_argument('--json_list_path', default="/home/rensortino/MLDataset_cleaned/trainset.dat", type=str)
+    parser.add_argument('--json_list_path', default="../MLDataset_cleaned/trainset.dat", type=str)
+    parser.add_argument('--data_dir', default="../MLDataset_cleaned", type=str)
 
     return parser
 
 
 def main(args):
     # path of the file which points to the paths of the JSONs of all the images for which the SNR should be calculated
-    image_json_list_path: str = args.json_list_path
+    image_json_list_path: str = Path(args.json_list_path)
+    data_dir: str = Path(args.data_dir)
 
     samples = read_samples(image_json_list_path)
 
-    # TODO Maybe remove up to...
     # Look at each JSON file in image_json_path_list
     for sample in samples:
         if not os.path.isfile(sample['img']):
@@ -37,7 +39,13 @@ def main(args):
         combined_mask: np.ndarray = np.zeros((image.shape[0], image.shape[1]))
         # Load each mask associated with the current image, as specified in the JSON File
         for obj in sample['objs']:
-            mask_path = os.path.join(os.path.sep, *image_dir, 'masks', obj['mask'])
+            if os.name == 'nt':
+                # Hack for Windows path
+                image_dir = os.sep.join(image_dir)
+                mask_path = os.path.join(image_dir, 'masks', obj['mask'])
+            else:
+                # Linux paths
+                mask_path = os.path.join(os.path.sep, *image_dir, 'masks', obj['mask'])
 
             # check that the mask fits file actually exists on disk
             if not os.path.isfile(mask_path):

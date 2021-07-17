@@ -11,17 +11,15 @@ from astropy.io import fits         # for opening .fits files
 import astropy.visualization        # for ZScaleInterval (data normalisation)
 
 
-# Function which loads a single .fits file as an image_sizeximage_sizex1 np.ndarray, given its path
-def load_fits_image(fits_file_path: str, fits_file_normalisation: str = 'none') -> np.ndarray:
-    image_data: np.ndarray = fits.getdata(fits_file_path)
+# Function which loads a single .fits file as an image_sizeximage_size np.ndarray, given its path
+def load_fits_image(fits_file_path: str, just_data: bool = False) -> np.ndarray:
 
-    # image normalisation, according to Hyper Parameters (ZScale etc)
-    if fits_file_normalisation == 'none':
-        pass
-    elif fits_file_normalisation == 'ZScale':
-        # normalise the data using astropy's ZScaleInterval
-        interval = astropy.visualization.ZScaleInterval()
-        image_data = interval(image_data)
+    if just_data:
+        # Load only data array
+        image_data: np.ndarray = fits.getdata(fits_file_path)
+    else:
+        # Load all data from FITS file
+        image_data: np.ndarray = fits.open(fits_file_path)
 
     return image_data
 

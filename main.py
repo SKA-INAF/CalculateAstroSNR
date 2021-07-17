@@ -15,7 +15,6 @@ def get_args_parser():
     parser = argparse.ArgumentParser('SNR Calculation', add_help=False)
 
     parser.add_argument('--json_list_path', default="../MLDataset_cleaned/trainset.dat", type=str)
-    parser.add_argument('--data_dir', default="../MLDataset_cleaned", type=str)
 
     return parser
 
@@ -23,7 +22,6 @@ def get_args_parser():
 def main(args):
     # path of the file which points to the paths of the JSONs of all the images for which the SNR should be calculated
     image_json_list_path = Path(args.json_list_path)
-    data_dir = Path(args.data_dir)
 
     samples: List = read_samples(image_json_list_path)
 
@@ -48,9 +46,11 @@ def main(args):
                 # Hack for Windows path
                 image_dir: str = os.sep.join(image_dir)
                 mask_path: str = os.path.join(image_dir, 'masks', obj['mask'])
-            else:
+            elif os.name == 'posix':
                 # Linux paths
                 mask_path = os.path.join(os.path.sep, *image_dir, 'masks', obj['mask'])
+            else:
+                raise NotImplementedError(f'Operating System {os.name} not supported')
 
             # check that the mask fits file actually exists on disk
             if not os.path.isfile(mask_path):

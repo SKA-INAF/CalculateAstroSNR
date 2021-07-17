@@ -1,5 +1,5 @@
-# Copyright (C) 2020  Daniel Magro
-# Full License at: https://github.com/DanielMagro97/LEXACTUM/blob/main/LICENSE
+# Copyright (C) 2021  Daniel Magro and Renato Sortino
+# Full License at: https://github.com/DanielMagro97/CalculateAstroSNR/blob/main/LICENSE
 
 from typing import List             # for type annotation
 
@@ -8,24 +8,23 @@ import json                         # for reading JSON files
 from tqdm import tqdm               # for progress bars
 import numpy as np                  # for numpy arrays
 from astropy.io import fits         # for opening .fits files
-import astropy.visualization        # for ZScaleInterval (data normalisation)
 
 
 # Function which loads a single .fits file as an image_sizeximage_size np.ndarray, given its path
-def load_fits_image(fits_file_path: str, just_data: bool = False) -> np.ndarray:
+def load_fits_image(fits_file_path: str, just_data: bool = False):
 
     if just_data:
         # Load only data array
         image_data: np.ndarray = fits.getdata(fits_file_path)
     else:
         # Load all data from FITS file
-        image_data: np.ndarray = fits.open(fits_file_path)
+        image_data = fits.open(fits_file_path)
 
     return image_data
 
 
 # Function which parses the trainset.dat file to traverse all the JSONs and collect the paths of each image and corresponding masks
-def read_samples(trainset_path):
+def read_samples(trainset_path) -> List:
     image_mask_paths: List = []
     with open(trainset_path, 'r') as json_paths_file:
         for json_path in tqdm(json_paths_file, desc='Colleting JSON paths'):

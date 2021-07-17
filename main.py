@@ -1,3 +1,6 @@
+# Copyright (C) 2021  Daniel Magro and Renato Sortino
+# Full License at: https://github.com/DanielMagro97/CalculateAstroSNR/blob/main/LICENSE
+
 from typing import List             # for type annotation
 
 import argparse                     # for parsing command line arguments
@@ -6,9 +9,14 @@ from pathlib import Path
 from tqdm import tqdm               # for progress bars
 import numpy as np                  # for numpy arrays and other operations
 import astropy.stats                # for 3-sigma clipping and MAD
-from utils.flux import compute_peak_flux
 
 from utils.load_fits import load_fits_image, read_samples     # for loading fits images with optional normalisation
+from utils.flux import compute_peak_flux
+
+# Suppress `Invalid 'BLANK' keyword in header.` warnings
+import warnings
+from astropy.io.fits.verify import VerifyWarning
+warnings.simplefilter('ignore', category=VerifyWarning)
 
 
 def get_args_parser():
@@ -34,7 +42,7 @@ def main(args):
             continue
         # load the image and headers from disk
         fits_image = load_fits_image(sample['img'])
-        image = fits_image[0].data
+        image: np.ndarray = fits_image[0].data
         image_header = fits_image[0].header
 
         # generate an aggregate of all the individual object masks
@@ -61,8 +69,8 @@ def main(args):
                 continue
 
             # load the mask and headers from disk
-            fits_mask: np.ndarray = load_fits_image(mask_path)
-            mask = fits_mask[0].data
+            fits_mask = load_fits_image(mask_path)
+            mask: np.ndarray = fits_mask[0].data
             mask_header = fits_mask[0].header
 
             # convert the masks into boolean (for logical operations)
@@ -70,7 +78,7 @@ def main(args):
             # Carry out an OR between the current and aggregated mask, to combine them
             np.bitwise_or(boolean_mask, combined_mask, out=combined_mask)
 
-        masked_image = np.ma.array(image, mask=combined_mask)
+        masked_image: np.ma.MaskedArray = np.ma.array(image, mask=combined_mask)
 
         # https://docs.astropy.org/en/stable/api/astropy.stats.sigma_clipped_stats.html
         three_sigma_clip = astropy.stats.sigma_clipped_stats(masked_image, sigma=3)
@@ -80,8 +88,7 @@ def main(args):
         mad: float = astropy.stats.median_absolute_deviation(masked_image)
         print('MAD: ' + str(mad))
 
-
-        peak_flux = compute_peak_flux(masked_image)
+        peak_flux: float = compute_peak_flux(masked_image)
         print(f'Peak Flux: {peak_flux}')
 
 

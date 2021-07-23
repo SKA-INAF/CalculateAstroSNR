@@ -4,8 +4,7 @@
 from typing import Dict, List             # for type annotation
 
 import os                           # for working with paths
-import json
-from astropy.extern.configobj.validate import numToDottedQuad                         # for reading JSON files
+import json                         # for reading JSON files
 from tqdm import tqdm               # for progress bars
 import numpy as np                  # for numpy arrays
 from astropy.io import fits         # for opening .fits files
@@ -32,20 +31,27 @@ def read_samples(trainset_path) -> List:
             # replace original path with current dir path
             json_path = json_path.replace('/home/riggi/Data/MLData', os.path.abspath(os.pardir))
             json_path = os.path.normpath(json_path).strip()
+
+            # check that the JSON file actually exists on disk
+            if not os.path.isfile(json_path):
+                # if not, print a message and skip it
+                print('File ' + json_path + ' not found on disk.')
+                continue
+
             with open(json_path, 'r') as label_json:
                 label = json.load(label_json)
                 # replacing relative path with the absolute one
                 label['img'] = label['img'].replace('..', os.sep.join(json_path.split(os.sep)[:-2]))
                 label['img'] = os.path.normpath(label['img'])
+                # store the json_path for future use
+                label['json'] = json_path
                 image_mask_paths.append(label)
 
     return image_mask_paths
 
 
+# Class to encode numpy arrays and floats into JSON
 class DataEncoder(json.JSONEncoder):
-    '''
-    Class to encode numpy arrays and floats into JSON
-    '''
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -53,18 +59,17 @@ class DataEncoder(json.JSONEncoder):
             return str(obj)
         return json.JSONEncoder.default(self, obj)
 
+
+# Get the absolute image path
 def get_output_path(sample: Dict) -> str:
-    '''
-    Get the absolute image path
-    '''
-    img_path_list = sample['img'].split(os.sep)
-    start_dir = img_path_list.index('MLDataset_cleaned')
+    img_path_list: List[str] = sample['img'].split(os.sep)
+    start_dir = img_path_list.index('data')
     img_path_list = img_path_list[start_dir:]
     return os.path.join(*img_path_list)
 
+
+# Saves the dictionary data to JSON
 def save_to_json(data: Dict, filename: str):
-    '''
-    Saves the dictionary data to JSON
-    '''
     with open(filename, 'w') as out:
+        print('Saving file to ' + filename)
         json.dump(data, out, cls=DataEncoder)

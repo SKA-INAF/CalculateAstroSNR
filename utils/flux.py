@@ -6,7 +6,11 @@ import numpy as np                  # for numpy arrays and other operations
 
 def compute_peak_flux(masked_image: np.ma.MaskedArray) -> float:
     objects: np.ma.MaskedArray = masked_image[masked_image.mask]
-    return objects.data.max()
+    # if there are object pixels in the image
+    if objects.data.size != 0:
+        return objects.data.max()
+    else:
+        return 0.0
 
 
 def compute_integrated_flux(masked_image: np.ma.MaskedArray, header: np.array) -> float:

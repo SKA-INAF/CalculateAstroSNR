@@ -135,9 +135,9 @@ def main(args):
             snr = json_to_snr[json_path]
             if snr < 2:
                 less_two += 1
-            elif snr < 5:
+            if snr < 5:
                 less_five += 1
-            elif snr < 10:
+            if snr < 10:
                 less_ten += 1
             else:
                 more_ten += 1

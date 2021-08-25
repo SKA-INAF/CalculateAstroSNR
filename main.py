@@ -167,9 +167,9 @@ def main(args):
     # This split is intended to produce a graph of performance against SNR, with binned SNRs. Again, these
     # boundaries can be adjusted as necessary
     with open('./snr_0-2.txt', 'w') as snr_0_2, open('./snr_2-5.txt', 'w') as snr_2_5, \
-            open('./snr_5_10.txt', 'w') as snr_5_10, open('./snr_10_20.txt', 'w') as snr_10_20, \
-            open('./snr_20_50.txt', 'w') as snr_20_50, open('./snr_50_100.txt', 'w') as snr_50_100, \
-            open('./snr_100_200.txt', 'w') as snr_100_200, open('./snr_200+.txt', 'w') as snr_200_plus:
+            open('./snr_5-10.txt', 'w') as snr_5_10, open('./snr_10-20.txt', 'w') as snr_10_20, \
+            open('./snr_20-50.txt', 'w') as snr_20_50, open('./snr_50-100.txt', 'w') as snr_50_100, \
+            open('./snr_100-200.txt', 'w') as snr_100_200, open('./snr_200+.txt', 'w') as snr_200_plus:
         for json_path in json_to_snr:
             snr: float = json_to_snr[json_path]
 
